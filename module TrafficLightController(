@@ -1,0 +1,56 @@
+module TrafficLightController(
+    input clk,
+    input reset,
+    input emergency,
+    input [1:0] vehicle_density, // 00: Low, 01: Medium, 10: High
+    output reg [2:0] lights       // lights[2]=Red, [1]=Yellow, [0]=Green
+);
+
+    // State encoding
+    parameter G = 2'b00, Y = 2'b01, R = 2'b10, E = 2'b11;
+
+    reg [1:0] current_state, next_state;
+
+    // State register
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            current_state <= G;
+        else
+            current_state <= next_state;
+    end
+
+    // Next state logic
+    always @(*) begin
+        case (current_state)
+            G: begin
+                if (emergency)
+                    next_state = E;
+                else
+                    next_state = (vehicle_density == 2'b00) ? G : Y;
+            end
+            Y: next_state = R;
+            R: begin
+                if (emergency)
+                    next_state = E;
+                else
+                    next_state = G;
+            end
+            E: next_state = R; // After emergency, go to Red
+            default: next_state = G;
+        endcase
+    end
+
+    // Output logic
+    always @(*) begin
+        // Default all lights off
+        lights = 3'b000;
+
+        case (current_state)
+            G: lights = 3'b001; // Green
+            Y: lights = 3'b010; // Yellow
+            R: lights = 3'b100; // Red
+            E: lights = 3'b001; // Emergency: green light to clear traffic
+        endcase
+    end
+
+endmodule
